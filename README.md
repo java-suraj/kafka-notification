@@ -93,5 +93,15 @@ public void listen(Message<String> message) {
     System.out.println("Received message: " + message);
 }
 ```
+### Live Kafka Notifications UI
+
+To view live Kafka messages in your browser:
+
+1. Make sure your Spring Boot application is running and listening on the correct port (e.g., `19010`).
+2. Open the `KafkaNotification.html` file in your browser.
+3. When you publish messages to the configured Kafka topic, you will see them appear live in the UI.
+
+> **Note:** The WebSocket endpoint and port in `KafkaNotification.html` must match your backend configuration.
+
 
 
