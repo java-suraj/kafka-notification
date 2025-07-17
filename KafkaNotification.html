@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Kafka Notifications Table with Notification Count</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f7f7f7;
+            margin: 0;
+        }
+
+        h2 {
+            margin-bottom: 10px;
+        }
+
+        #status {
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+        }
+
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f0f0f0;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        .success-true {
+            color: green;
+            font-weight: bold;
+        }
+
+        .success-false {
+            color: red;
+            font-weight: bold;
+        }
+
+        /* Notification Icon styles */
+        #notificationIcon {
+            position: fixed;
+            top: 15px;
+            right: 20px;
+            cursor: pointer;
+            font-size: 24px;
+            color: #555;
+            user-select: none;
+        }
+
+        #notificationIcon:hover {
+            color: #000;
+        }
+
+        #notificationCount {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: red;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 12px;
+            pointer-events: none;
+            min-width: 18px;
+            text-align: center;
+        }
+
+        /* Container for the icon + count */
+        #notificationWrapper {
+            position: fixed;
+            top: 10px;
+            right: 20px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Kafka Notifications</h2>
+<div id="status">Connecting...</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Priority</th>
+            <th>Message Log</th>
+            <th>Type</th>
+            <th>Operation</th>
+            <th>Source</th>
+            <th>Success</th>
+        </tr>
+    </thead>
+    <tbody id="messagesTableBody">
+        <!-- Messages will be appended here -->
+    </tbody>
+</table>
+
+<!-- Notification bell and count -->
+<div id="notificationWrapper" title="New Messages">
+    <div id="notificationIcon">&#128276;</div> <!-- Unicode bell icon 🔔 -->
+    <div id="notificationCount" style="display:none;">0</div>
+</div>
+
+<script>
+    let socket;
+    let newMessageCount = 0;
+
+    window.onload = () => {
+        connectToWebSocket();
+
+        // Reset count when notification icon clicked
+        document.getElementById('notificationWrapper').addEventListener('click', () => {
+            newMessageCount = 0;
+            updateNotificationCount();
+        });
+    };
+
+    function connectToWebSocket() {
+        socket = new WebSocket("ws://localhost:19010/ws/kafka");
+
+        socket.onopen = () => {
+            updateStatus("✅ Connected to WebSocket.");
+        };
+
+        socket.onmessage = (event) => {
+            addMessageToTable(event.data);
+            incrementNotificationCount();
+        };
+
+        socket.onclose = () => {
+            updateStatus("⚠️ WebSocket disconnected. Reconnecting in 5s...");
+            setTimeout(connectToWebSocket, 5000);
+        };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket error:", error);
+        };
+    }
+
+    function updateStatus(message) {
+        document.getElementById("status").textContent = message;
+    }
+
+    function addMessageToTable(rawMessage) {
+        const tableBody = document.getElementById("messagesTableBody");
+
+        let msg;
+        try {
+            msg = JSON.parse(rawMessage);
+
+            const priority = msg.priority || "-";
+            const messageLog = msg.messageLog || "-";
+            const type = msg.type || "-";
+            const operation = msg.operation || "-";
+            const source = msg.source || "-";
+            const success = msg.success !== undefined ? msg.success : "-";
+
+            const row = document.createElement("tr");
+
+            row.innerHTML = `
+                <td>${priority}</td>
+                <td>${messageLog}</td>
+                <td>${type}</td>
+                <td>${operation}</td>
+                <td>${source}</td>
+                <td class="${success === true ? 'success-true' : 'success-false'}">${success}</td>
+            `;
+
+            tableBody.appendChild(row);
+            tableBody.scrollTop = tableBody.scrollHeight;
+
+        } catch (err) {
+            console.error("Failed to parse message:", err);
+        }
+    }
+
+    function incrementNotificationCount() {
+        newMessageCount++;
+        updateNotificationCount();
+    }
+
+    function updateNotificationCount() {
+        const countElem = document.getElementById('notificationCount');
+        if (newMessageCount > 0) {
+            countElem.style.display = 'block';
+            countElem.textContent = newMessageCount;
+        } else {
+            countElem.style.display = 'none';
+        }
+    }
+</script>
+
+</body>
+</html>
